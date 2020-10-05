@@ -171,15 +171,23 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
 
             wall_line[0] = wall_points[0];
             wall_line[1] = wall_points[1];
+            wall_line[1].x -= wall_line[0].x;
+            wall_line[1].y -= wall_line[0].y;
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
             wall_line[0] = wall_points[2];
             wall_line[1] = wall_points[3];
+            wall_line[1].x -= wall_line[0].x;
+            wall_line[1].y -= wall_line[0].y;
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
             wall_line[0] = wall_points[0];
             wall_line[1] = wall_points[2];
+            wall_line[1].x -= wall_line[0].x;
+            wall_line[1].y -= wall_line[0].y;
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
             wall_line[0] = wall_points[1];
             wall_line[1] = wall_points[3];
+            wall_line[1].x -= wall_line[0].x;
+            wall_line[1].y -= wall_line[0].y;
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
         }
     }
