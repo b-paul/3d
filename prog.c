@@ -14,7 +14,7 @@
 
 typedef enum {
     DOWN, UP,
-    LEFT, RIGHT, // left and right have the 2 bit
+    LEFT, RIGHT,
     DIR_CNT
 } Direction;
 
@@ -24,20 +24,45 @@ typedef struct {
 } Point_2D;
 
 typedef struct {
+    float x;
+    float y;
+    float z;
+} Point_3D;
+
+typedef struct {
+    /* ap, b and c values for the plane */
+    Point_3D n;
+    /* d value for the plane used for offset */
+    float d;
+    /* 
+     * Boolean to determine whether a point is wanted
+     * to be on the greater than side or less than side 
+     */
+    bool s;
+} Plane;
+
+/* Planes used for the frustum */
+Plane frustum[5] = {
+    {{0, 1, 0}, 10, true}
+}
+
+typedef struct {
     float floor_height;
     float ceiling_height;
     Point_2D points[2];
 } Wall;
-
-/* List of walls */
-Wall walls[] = {{0, 200, {{100, 100}, {100, 200}}}};
-int wall_cnt = 1;
 
 typedef struct {
     float x;
     float z;
     float yaw;
 } Player;
+
+/* List of walls */
+Wall walls[] = {
+    {0, 200, {{100, 100}, {100, 200}}}
+};
+int wall_cnt = 1;
 
 /* Player variable using the above structure */
 Player player = {50, 50, 0};
@@ -58,7 +83,7 @@ xcb_rectangle_t clear_rectangle[] = {
 
 /* Constants used for movement */
 float movement_constants[DIR_CNT] = {
-    2.0, -2.0, -(1.0/32.0)*PI, (1.0/32.0)*PI
+    2.0, -2.0, -(1.0/128.0)*PI, (1.0/128.0)*PI
 };
 
 /* Sleep for n milliseconds */
@@ -89,8 +114,10 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
 
     /* Draw a 2D map showing the player and all the walls */
     if (type == 0) {
-        /* Calculate the graphical coordinates of the player
-         * based on the player struct */
+        /* 
+         * Calculate the graphical coordinates of the player
+         * based on the player struct
+         */
         player_point.x = (int)player.x;
         player_point.y = (int)player.z;
 
@@ -113,8 +140,10 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
         }
     } 
-    /* Draw a 2D map that draws the player in 
-     * the middle and the walls relative to the player */
+    /* 
+     * Draw a 2D map that draws the player in 
+     * the middle and the walls relative to the player
+     */
     else if (type == 1) {
         /* Set the player's location to the middle of the screen */
         player_point.x = 400;
@@ -129,16 +158,18 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
         xcb_poly_point(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 1, &player_point);
         xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, player_line);
 
-        /* Find the location of the wall relative
-         * to the player and draw it */
+        /* 
+         * Find the location of the wall relative
+         * to the player and draw it
+         */
         for (int i = 0; i < wall_cnt; i++) {
             float wall_x1 = walls[i].points[0].x - player.x;
             float wall_x2 = walls[i].points[1].x - player.x;
             float wall_y1 = walls[i].points[0].y - player.z;
             float wall_y2 = walls[i].points[1].y - player.z;
             xcb_point_t wall_line[] = {
-                {400 - wall_x1 * sin(player.yaw) + wall_y1 * cos(player.yaw), 500 + wall_x1 * cos(player.yaw) + wall_y1 * sin(player.yaw)},
-                {400 - wall_x2 * sin(player.yaw) + wall_y2 * cos(player.yaw) - wall_line[0].x, 500 + wall_x2 * cos(player.yaw) + wall_y2 * sin(player.yaw) - wall_line[0].y},
+                {400 + wall_x1 * sin(player.yaw) - wall_y1 * cos(player.yaw), 500 + wall_x1 * cos(player.yaw) + wall_y1 * sin(player.yaw)},
+                {400 + wall_x2 * sin(player.yaw) - wall_y2 * cos(player.yaw) - wall_line[0].x, 500 + wall_x2 * cos(player.yaw) + wall_y2 * sin(player.yaw) - wall_line[0].y},
             };
 
             xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
@@ -153,16 +184,22 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
             float wall_y1 = walls[i].points[0].y - player.z;
             float wall_y2 = walls[i].points[1].y - player.z;
 
-            wall_x1 = wall_x1 * sin(player.yaw) + wall_y1 * cos(player.yaw);
-            wall_x2 = wall_x2 * sin(player.yaw) + wall_y2 * cos(player.yaw);
-            float wall_z1 = wall_x1 * cos(player.yaw) * wall_y1 * sin(player.yaw);
-            float wall_z2 = wall_x2 * cos(player.yaw) * wall_y2 * sin(player.yaw);
+            float wall_z1 = wall_x1 * cos(player.yaw) + wall_y1 * sin(player.yaw);
+            float wall_z2 = wall_x2 * cos(player.yaw) + wall_y2 * sin(player.yaw);
+            wall_x1 = wall_x1 * sin(player.yaw) - wall_y1 * cos(player.yaw);
+            wall_x2 = wall_x2 * sin(player.yaw) - wall_y2 * cos(player.yaw);
+
+            if (wall_z1 >= 0 && wall_z2 >= 0)
+                continue;
+            if (wall_z1 >= 0 || wall_z2 >= 0) {
+                float nearz = 1e-4f, farz = 5, nearside = 1e-5f, farside = 20;
+            }
 
             xcb_point_t wall_points[] = {
-                {400 - wall_x1 * 16 / wall_z1, 500 - 50 / wall_z1},
-                {400 - wall_x2 * 16 / wall_z2, 500 - 50 / wall_z2},
-                {400 - wall_x1 * 16 / wall_z1, 500 + 50 / wall_z1},
-                {400 - wall_x2 * 16 / wall_z2, 500 + 50 / wall_z2},
+                {400 - wall_x1 * 128 / wall_z1, 500 - (walls[i].floor_height - walls[i].ceiling_height) / wall_z1},
+                {400 - wall_x2 * 128 / wall_z2, 500 - (walls[i].floor_height - walls[i].ceiling_height) / wall_z2},
+                {400 - wall_x1 * 128 / wall_z1, 500 + (walls[i].floor_height - walls[i].ceiling_height) / wall_z1},
+                {400 - wall_x2 * 128 / wall_z2, 500 + (walls[i].floor_height - walls[i].ceiling_height) / wall_z2},
             };
 
             xcb_point_t wall_line[] = {
@@ -205,8 +242,10 @@ move(Direction dir) {
         player.yaw = max(2*PI, player.yaw);
         player.yaw = max(2*PI, player.yaw+2*PI);
 
-    /* The only other type of movement is
-     * forward/backward movement */
+    /* 
+     * The only other type of movement is
+     * forward/backward movement
+     */
     } else {
         player.x += movement_constants[dir] * cos(player.yaw);
         player.z += movement_constants[dir] * sin(player.yaw);
@@ -226,8 +265,10 @@ main() {
     xcb_screen_iterator_t screen_iterator = xcb_setup_roots_iterator(setup);
     xcb_screen_t *screen                  = screen_iterator.data;
 
-    /* Create a graphical environment using white as the
-     * default colour when drawing */
+    /* 
+     * Create a graphical environment using white as the
+     * default colour when drawing
+     */
     xcb_drawable_t window     = screen->root;
     xcb_gcontext_t foreground = xcb_generate_id(connection);
     uint32_t mask             = XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES;
@@ -248,7 +289,7 @@ main() {
                       window,
                       screen->root,
                       0, 0,
-                      150, 150,
+                      700, 700,
                       10,
                       XCB_WINDOW_CLASS_INPUT_OUTPUT,
                       screen->root_visual,
