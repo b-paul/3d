@@ -9,7 +9,7 @@
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
-#define ROTATION_MASK 2
+#define DIR_MASK 2
 #define PI 3.14159265
 
 typedef enum {
@@ -34,41 +34,84 @@ typedef struct {
     Point_3D n;
     /* d value for the plane used for offset */
     float d;
-    /* 
-     * Boolean to determine whether a point is wanted
-     * to be on the greater than side or less than side 
-     */
-    bool s;
 } Plane;
 
 /* Planes used for the frustum */
 Plane frustum[5] = {
-    {{0, 1, 0}, 10, true}
-}
+    {{0, 1, 0}, 10}
+};
 
 typedef struct {
-    float floor_height;
-    float ceiling_height;
-    Point_2D points[2];
-} Wall;
+    Point_3D points[3];
+} Triangle;
 
 typedef struct {
-    float x;
-    float z;
-    float yaw;
+    Point_3D pos;
+    Point_3D angle;
+
+    float fov;
 } Player;
 
 /* List of walls */
-Wall walls[] = {
-    {0, 200, {{100, 100}, {100, 200}}}
+Triangle triangles[] = {
+    {{{100, -100, 100}, {100, -50, 100}, {100, -50,  110}}},
+    {{{100, -100, 100}, {100, -50, 110}, {100, -100, 110}}},
+    {{{100, -100, 150}, {100, -50, 150}, {100, -50,  160}}},
+    {{{100, -100, 150}, {100, -50, 160}, {100, -100, 160}}},
+    {{{110, -100, 100}, {110, -50, 100}, {110, -50,  110}}},
+    {{{110, -100, 100}, {110, -50, 110}, {110, -100, 110}}},
+    {{{110, -100, 150}, {110, -50, 150}, {110, -50,  160}}},
+    {{{110, -100, 150}, {110, -50, 160}, {110, -100, 160}}},
+    {{{100, -100, 100}, {100, -50, 100}, {110, -50,  100}}},
+    {{{100, -100, 100}, {110, -50, 100}, {110, -100, 100}}},
+    {{{100, -100, 110}, {100, -50, 110}, {110, -50,  110}}},
+    {{{100, -100, 110}, {110, -50, 110}, {110, -100, 110}}},
+    {{{100, -100, 150}, {100, -50, 150}, {110, -50,  150}}},
+    {{{100, -100, 150}, {110, -50, 150}, {110, -100, 150}}},
+    {{{100, -100, 160}, {100, -50, 160}, {110, -50,  160}}},
+    {{{100, -100, 160}, {110, -50, 160}, {110, -100, 160}}},
+    {{{150, -100, 100}, {150, -50, 100}, {150, -50,  110}}},
+    {{{150, -100, 100}, {150, -50, 110}, {150, -100, 110}}},
+    {{{150, -100, 150}, {150, -50, 150}, {150, -50,  160}}},
+    {{{150, -100, 150}, {150, -50, 160}, {150, -100, 160}}},
+    {{{160, -100, 100}, {160, -50, 100}, {160, -50,  110}}},
+    {{{160, -100, 100}, {160, -50, 110}, {160, -100, 110}}},
+    {{{160, -100, 150}, {160, -50, 150}, {160, -50,  160}}},
+    {{{160, -100, 150}, {160, -50, 160}, {160, -100, 160}}},
+    {{{150, -100, 100}, {150, -50, 100}, {160, -50,  100}}},
+    {{{150, -100, 100}, {160, -50, 100}, {160, -100, 100}}},
+    {{{150, -100, 110}, {150, -50, 110}, {160, -50,  110}}},
+    {{{150, -100, 110}, {160, -50, 110}, {160, -100, 110}}},
+    {{{150, -100, 150}, {150, -50, 150}, {160, -50,  150}}},
+    {{{150, -100, 150}, {160, -50, 150}, {160, -100, 150}}},
+    {{{150, -100, 160}, {150, -50, 160}, {160, -50,  160}}},
+    {{{150, -100, 160}, {160, -50, 160}, {160, -100, 160}}},
+    {{{100, -50,  100}, {160, -50, 100}, {160, -50,  160}}},
+    {{{100, -50,  100}, {160, -50, 160}, {100, -50,  160}}},
+    {{{100, -50,  100}, {100, -40, 100}, {100, -40,  160}}},
+    {{{100, -50,  100}, {100, -40, 160}, {100, -50,  160}}},
+    {{{160, -50,  100}, {160, -40, 100}, {160, -40,  160}}},
+    {{{160, -50,  100}, {160, -40, 160}, {160, -50,  160}}},
+    {{{100, -50,  100}, {100, -40, 100}, {160, -40,  100}}},
+    {{{100, -50,  100}, {160, -40, 100}, {160, -50,  100}}},
+    {{{100, -50,  160}, {100, -40, 160}, {160, -40,  160}}},
+    {{{100, -50,  160}, {160, -40, 160}, {160, -50,  160}}},
+    {{{100, -40,  100}, {160, -40, 100}, {160, -40,  160}}},
+    {{{100, -40,  100}, {160, -40, 160}, {100, -40,  160}}},
 };
-int wall_cnt = 1;
+int triangle_cnt = 44;
 
 /* Player variable using the above structure */
-Player player = {50, 50, 0};
+Player player = {{200, 0, 150}, {0, 0, 0}, PI/2};
 
 /* Mask used to store all currently pressed movement keys */
 uint8_t movement_mask = 0;
+
+/* Mask used to stora all currently pressed rotation keys */
+uint8_t rotation_mask = 0;
+
+/* Screen size used for fov calculation etc */
+uint16_t screen_size[2];
 
 /* Point used to represent the player in the 2d map */
 xcb_point_t player_point;
@@ -83,7 +126,11 @@ xcb_rectangle_t clear_rectangle[] = {
 
 /* Constants used for movement */
 float movement_constants[DIR_CNT] = {
-    2.0, -2.0, -(1.0/128.0)*PI, (1.0/128.0)*PI
+    2.0, -2.0, 2.0, -2.0
+};
+
+Point_2D rotation_constants[DIR_CNT] = {
+    {-0.1, 0.0}, {0.1, 0.0}, {0.0, 0.1}, {0.0, -0.1}
 };
 
 /* Sleep for n milliseconds */
@@ -102,6 +149,8 @@ msleep(int n) {
 
 void
 draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foreground, xcb_screen_t *screen, int type) {
+    int i,j;
+
     /* clear the screen */
     uint32_t mask   = XCB_GC_FOREGROUND;
     uint32_t value = screen->black_pixel;
@@ -112,121 +161,99 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
     value = screen->white_pixel;
     xcb_change_gc(connection, foreground, mask, &value);
 
-    /* Draw a 2D map showing the player and all the walls */
-    if (type == 0) {
-        /* 
-         * Calculate the graphical coordinates of the player
-         * based on the player struct
-         */
-        player_point.x = (int)player.x;
-        player_point.y = (int)player.z;
-
-        player_line[0].x = player_point.x + cos(player.yaw)*-5;
-        player_line[0].y = player_point.y + sin(player.yaw)*-5;
-        player_line[1].x = cos(player.yaw)*-15;
-        player_line[1].y = sin(player.yaw)*-15;
-
-        /* Draw the player to the screen */
-        xcb_poly_point(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 1, &player_point);
-        xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, player_line);
-
-        /* Draw the walls to the screen */
-        for (int i = 0; i < wall_cnt; i++) {
-            xcb_point_t wall_line[] = {
-                {walls[i].points[0].x, walls[i].points[0].y},
-                {walls[i].points[1].x-walls[i].points[0].x, walls[i].points[1].y-walls[i].points[0].y},
-            };
-
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
-        }
-    } 
-    /* 
-     * Draw a 2D map that draws the player in 
-     * the middle and the walls relative to the player
-     */
-    else if (type == 1) {
-        /* Set the player's location to the middle of the screen */
-        player_point.x = 400;
-        player_point.y = 500;
-
-        player_line[0].x = 400;
-        player_line[0].y = 495;
-        player_line[1].x = 0;
-        player_line[1].y = -10;
-
-        /* Draw the player to the screen */
-        xcb_poly_point(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 1, &player_point);
-        xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, player_line);
-
-        /* 
-         * Find the location of the wall relative
-         * to the player and draw it
-         */
-        for (int i = 0; i < wall_cnt; i++) {
-            float wall_x1 = walls[i].points[0].x - player.x;
-            float wall_x2 = walls[i].points[1].x - player.x;
-            float wall_y1 = walls[i].points[0].y - player.z;
-            float wall_y2 = walls[i].points[1].y - player.z;
-            xcb_point_t wall_line[] = {
-                {400 + wall_x1 * sin(player.yaw) - wall_y1 * cos(player.yaw), 500 + wall_x1 * cos(player.yaw) + wall_y1 * sin(player.yaw)},
-                {400 + wall_x2 * sin(player.yaw) - wall_y2 * cos(player.yaw) - wall_line[0].x, 500 + wall_x2 * cos(player.yaw) + wall_y2 * sin(player.yaw) - wall_line[0].y},
-            };
-
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
-        }
-    }
     /* Draw in 3D */
-    else if (type == 2) {
-        /* Draw the 3d representation of each wall */
-        for (int i = 0; i < wall_cnt; i++) {
-            float wall_x1 = walls[i].points[0].x - player.x;
-            float wall_x2 = walls[i].points[1].x - player.x;
-            float wall_y1 = walls[i].points[0].y - player.z;
-            float wall_y2 = walls[i].points[1].y - player.z;
 
-            float wall_z1 = wall_x1 * cos(player.yaw) + wall_y1 * sin(player.yaw);
-            float wall_z2 = wall_x2 * cos(player.yaw) + wall_y2 * sin(player.yaw);
-            wall_x1 = wall_x1 * sin(player.yaw) - wall_y1 * cos(player.yaw);
-            wall_x2 = wall_x2 * sin(player.yaw) - wall_y2 * cos(player.yaw);
+    /* 
+     * Distance from player eye to left/right side of monitor with a
+     * certain fov
+     */
+    float dist = (screen_size[0]*sin(PI-player.fov/2))/sin(player.fov);
+    float display_z = (sqrt(4*dist*dist - screen_size[0]*screen_size[0]))/2;
 
-            if (wall_z1 >= 0 && wall_z2 >= 0)
-                continue;
-            if (wall_z1 >= 0 || wall_z2 >= 0) {
-                float nearz = 1e-4f, farz = 5, nearside = 1e-5f, farside = 20;
-            }
+    /* Draw the 3d representation of each triangle */
+    for (i = 0; i < triangle_cnt; i++) {
 
-            xcb_point_t wall_points[] = {
-                {400 - wall_x1 * 128 / wall_z1, 500 - (walls[i].floor_height - walls[i].ceiling_height) / wall_z1},
-                {400 - wall_x2 * 128 / wall_z2, 500 - (walls[i].floor_height - walls[i].ceiling_height) / wall_z2},
-                {400 - wall_x1 * 128 / wall_z1, 500 + (walls[i].floor_height - walls[i].ceiling_height) / wall_z1},
-                {400 - wall_x2 * 128 / wall_z2, 500 + (walls[i].floor_height - walls[i].ceiling_height) / wall_z2},
-            };
+        /* Translate all points on the triangle to be relative to the player */
+        Point_3D translated_points[3];
 
-            xcb_point_t wall_line[] = {
-                {0,0},{0,0}
-            };
-
-            wall_line[0] = wall_points[0];
-            wall_line[1] = wall_points[1];
-            wall_line[1].x -= wall_line[0].x;
-            wall_line[1].y -= wall_line[0].y;
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
-            wall_line[0] = wall_points[2];
-            wall_line[1] = wall_points[3];
-            wall_line[1].x -= wall_line[0].x;
-            wall_line[1].y -= wall_line[0].y;
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
-            wall_line[0] = wall_points[0];
-            wall_line[1] = wall_points[2];
-            wall_line[1].x -= wall_line[0].x;
-            wall_line[1].y -= wall_line[0].y;
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
-            wall_line[0] = wall_points[1];
-            wall_line[1] = wall_points[3];
-            wall_line[1].x -= wall_line[0].x;
-            wall_line[1].y -= wall_line[0].y;
-            xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, wall_line);
+        for (j = 0; j < 3; j++) {
+            translated_points[j].x = triangles[i].points[j].x - player.pos.x;
+            translated_points[j].y = -triangles[i].points[j].y - player.pos.y;
+            translated_points[j].z = triangles[i].points[j].z - player.pos.z;
         }
+
+        /* Rotate all the points on the triangle to be relative to the player */
+
+        Point_3D points[3];
+
+        for (j = 0; j < 3; j++) {
+            /* Rotate on the y axis */
+            points[j].x = cos(player.angle.y) * translated_points[j].x +
+                          sin(player.angle.y) * translated_points[j].z;
+
+            points[j].y = translated_points[j].y;
+
+            points[j].z =-sin(player.angle.y) * translated_points[j].x +
+                          cos(player.angle.y) * translated_points[j].z;
+
+            /* Put these numbers into the translated_points variable for reuse */
+            translated_points[j].x = points[j].x;
+            translated_points[j].y = points[j].y;
+            translated_points[j].z = points[j].z;
+
+            /* Rotate on the x axis */
+            points[j].y = cos(player.angle.x) * translated_points[j].y +
+                          sin(player.angle.x) * translated_points[j].z;
+            
+            points[j].z =-sin(player.angle.x) * translated_points[j].y +
+                          cos(player.angle.x) * translated_points[j].z;
+
+            translated_points[j].x = points[j].x;
+            translated_points[j].y = points[j].y;
+            translated_points[j].z = points[j].z;
+
+            /* Rotate on the z axis */
+            points[j].y = cos(player.angle.z) * translated_points[j].y +
+                          sin(player.angle.z) * translated_points[j].x;
+
+            points[j].x =-sin(player.angle.z) * translated_points[j].y +
+                          cos(player.angle.z) * translated_points[j].x;
+        }
+
+        /*
+        if (points[0].z <= 0 && points[1].z <= 0 && points[2].z <= 0)
+            continue;
+        */
+
+        /* Check if the points are outside of the bounds of the clipping planes */
+
+        /* Project points onto a 2d plane */
+        xcb_point_t triangle_points[3];
+
+        for (j = 0; j < 3; j++) {
+            triangle_points[j].x = (screen_size[0]/2) + (display_z/points[j].z)*points[j].x;
+            triangle_points[j].y = (screen_size[1]/2) + (display_z/points[j].z)*points[j].y;
+        }
+
+        xcb_point_t triangle_line[] = {
+            {0,0},{0,0}
+        };
+
+        triangle_line[0] = triangle_points[0];
+        triangle_line[1] = triangle_points[1];
+        triangle_line[1].x -= triangle_line[0].x;
+        triangle_line[1].y -= triangle_line[0].y;
+        xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, triangle_line);
+        triangle_line[0] = triangle_points[1];
+        triangle_line[1] = triangle_points[2];
+        triangle_line[1].x -= triangle_line[0].x;
+        triangle_line[1].y -= triangle_line[0].y;
+        xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, triangle_line);
+        triangle_line[0] = triangle_points[2];
+        triangle_line[1] = triangle_points[0];
+        triangle_line[1].x -= triangle_line[0].x;
+        triangle_line[1].y -= triangle_line[0].y;
+        xcb_poly_line(connection, XCB_COORD_MODE_PREVIOUS, window, foreground, 2, triangle_line);
     }
 
     xcb_flush(connection);
@@ -234,22 +261,38 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
 
 void
 move(Direction dir) {
-    /* If the direction is a rotation */
-    if (dir & ROTATION_MASK) {
-        player.yaw += movement_constants[dir];
-
-
-        player.yaw = max(2*PI, player.yaw);
-        player.yaw = max(2*PI, player.yaw+2*PI);
+    /* If the direction is left or right */
+    if (dir & DIR_MASK) {
+        player.pos.x -= movement_constants[dir] * sin(-player.angle.y + PI/2) * cos(-player.angle.z);
+        player.pos.z -= movement_constants[dir] * cos(-player.angle.y + PI/2);
+        player.pos.y -= movement_constants[dir] * sin(-player.angle.z);
 
     /* 
      * The only other type of movement is
      * forward/backward movement
      */
     } else {
-        player.x += movement_constants[dir] * cos(player.yaw);
-        player.z += movement_constants[dir] * sin(player.yaw);
+        player.pos.x -= movement_constants[dir] * sin(-player.angle.y);
+        player.pos.z -= movement_constants[dir] * cos(-player.angle.y) * cos(-player.angle.x);
+        player.pos.y -= movement_constants[dir] * sin(-player.angle.x);
     }
+}
+
+void
+rotate(Direction dir) {
+    /* If the direction is left or right */
+    player.angle.x += rotation_constants[dir].x;
+    player.angle.y += rotation_constants[dir].y;
+
+    if (player.angle.x >= 2*PI)
+        player.angle.x -= 2*PI;
+    else if (player.angle.x < 0)
+        player.angle.x += 2*PI;
+
+    if (player.angle.y >= 2*PI)
+        player.angle.y -= 2*PI;
+    else if (player.angle.y < 0)
+        player.angle.y += 2*PI;
 }
 
 int
@@ -298,17 +341,28 @@ main() {
     xcb_map_window(connection, window);
     xcb_flush(connection);
 
+    xcb_get_geometry_reply_t *geom;
+
     xcb_generic_event_t *event;
 
     int i, type = 1;
     while (!exit) {
         msleep(1000/60);
+        //printf("%f %f %f\n", player.pos.x, player.pos.z, player.angle.y*180/PI);
+
+        if ((geom = xcb_get_geometry_reply(connection, 
+                        xcb_get_geometry(connection, window), NULL))) {
+            screen_size[0] = geom->width;
+            screen_size[1] = geom->height;
+        }
+
         draw(connection, window, foreground, screen, type);
 
         for (i = 0; i < DIR_CNT; i++) {
-            if (movement_mask & (1 << i)) {
+            if (movement_mask & (1 << i))
                 move(i);
-            }
+            if (rotation_mask & (1 << i))
+                rotate(i);
         }
 
         while (event = xcb_poll_for_event(connection)) {
@@ -342,6 +396,18 @@ main() {
                         case 43:
                             type = 2;
                             break;
+                        case 111:
+                            rotation_mask |= 0x1 << UP;
+                            break;
+                        case 113:
+                            rotation_mask |= 0x1 << LEFT;
+                            break;
+                        case 116:
+                            rotation_mask |= 0x1 << DOWN;
+                            break;
+                        case 114:
+                            rotation_mask |= 0x1 << RIGHT;
+                            break;
                     }
 
 
@@ -361,6 +427,18 @@ main() {
                             break;
                         case 40:
                             movement_mask &= ~(0x1 << RIGHT);
+                            break;
+                        case 111:
+                            rotation_mask &= ~(0x1 << UP);
+                            break;
+                        case 113:
+                            rotation_mask &= ~(0x1 << LEFT);
+                            break;
+                        case 116:
+                            rotation_mask &= ~(0x1 << DOWN);
+                            break;
+                        case 114:
+                            rotation_mask &= ~(0x1 << RIGHT);
                             break;
                     }
                     break;
