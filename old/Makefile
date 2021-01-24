@@ -1,4 +1,4 @@
 LIBS = -lxcb -lm
 
-prog: *.c
+prog: prog.c
 	${CC} $? -o $@ ${LIBS}
