@@ -8,6 +8,7 @@
 #include <xcb/xcb.h>
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#define abs(a) ((a) > 0 ? (a) : -(a))
 
 #define DIR_MASK 2
 #define PI 3.14159265
@@ -37,9 +38,10 @@ typedef struct {
 } Plane;
 
 /* Planes used for the frustum */
-Plane frustum[5] = {
-    {{0, 1, 0}, 10}
+Plane frustum[4] = {
 };
+int near_distance = 1;
+int far_distance  = 1000;
 
 typedef struct {
     Point_3D points[3];
@@ -220,10 +222,10 @@ draw(xcb_connection_t *connection, xcb_drawable_t window, xcb_gcontext_t foregro
                           cos(player.angle.z) * translated_points[j].x;
         }
 
-        /*
-        if (points[0].z <= 0 && points[1].z <= 0 && points[2].z <= 0)
+        if (points[0].z <= near_distance && points[1].z <= near_distance && points[2].z <= near_distance)
             continue;
-        */
+        if (points[0].z >= far_distance && points[1].z >= far_distance && points[2].z >= far_distance)
+            continue;
 
         /* Check if the points are outside of the bounds of the clipping planes */
 
