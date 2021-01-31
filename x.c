@@ -68,12 +68,6 @@ init_window() {
 	xcb_map_window(connection, window);
 	xcb_flush(connection);
 
-	if ((geom = xcb_get_geometry_reply(connection, 
-					xcb_get_geometry(connection, window), NULL))) {
-		screen_size[0] = geom->width;
-		screen_size[1] = geom->height;
-	}
-
 	return 0;
 }
 
