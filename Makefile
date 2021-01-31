@@ -1,4 +1,6 @@
 LIBS = -lxcb -lm
 
-prog: *.c
-	${CC} $? -o $@ ${LIBS}
+SOURCES = *.c
+
+prog: ${SOURCES}
+	${CC} ${SOURCES} -o $@ ${LIBS}

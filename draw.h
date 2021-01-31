@@ -1,3 +1,3 @@
 #pragma once
 
-int init_window();
+void draw();
