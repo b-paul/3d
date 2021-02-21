@@ -3,6 +3,8 @@
 #include "draw.h"
 #include "math.h"
 
+extern double screen_size[2];
+
 xcb_connection_t *connection;
 xcb_screen_t *screen;
 xcb_drawable_t window;
@@ -14,8 +16,8 @@ void draw_line(Vector2d a, Vector2d b) {
     xcb_change_gc(connection, foreground, mask, &value);
 
 	xcb_point_t x_line[2] = {
-		{a.i, a.j},
-		{b.i, b.j}
+		{a[0], a[1]},
+		{b[0], b[1]}
 	};
 	xcb_poly_line(connection, XCB_COORD_MODE_ORIGIN, window,
 			foreground, 2, x_line);
@@ -68,11 +70,21 @@ init_window() {
 	xcb_map_window(connection, window);
 	xcb_flush(connection);
 
+    xcb_get_geometry_reply_t *geom;
+
+    if ((geom = xcb_get_geometry_reply(connection, 
+                    xcb_get_geometry(connection, window), NULL))) {
+        screen_size[0] = geom->width;
+        screen_size[1] = geom->height;
+    }
+
 	return 0;
 }
 
-void parse_events() {
+void
+parse_events() {
     xcb_generic_event_t *event;
+
 	if ((event = xcb_poll_for_event(connection))) {
             switch (event->response_type & ~0x80) {
                 case XCB_EXPOSE:
@@ -80,5 +92,4 @@ void parse_events() {
 					break;
 			}
 	}
-
 }
