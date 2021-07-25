@@ -2,8 +2,11 @@
 
 #include "draw.h"
 #include "math.h"
+#include "player.h"
 
 extern double screen_size[2];
+
+extern Player camera;
 
 xcb_connection_t *connection;
 xcb_screen_t *screen;
@@ -83,6 +86,19 @@ init_window() {
 
 void
 parse_events() {
+    moveCamera(0.001);
+    rotateCamera(0.001);
+
+    draw();
+
+    xcb_get_geometry_reply_t *geom;
+
+    if ((geom = xcb_get_geometry_reply(connection, 
+                    xcb_get_geometry(connection, window), NULL))) {
+        screen_size[0] = geom->width;
+        screen_size[1] = geom->height;
+    }
+
     xcb_generic_event_t *event;
 
 	if ((event = xcb_poll_for_event(connection))) {
@@ -90,6 +106,68 @@ parse_events() {
                 case XCB_EXPOSE:
 					draw();
 					break;
+				case XCB_KEY_PRESS: {
+                    xcb_key_press_event_t *key_press_event;
+                    key_press_event = (xcb_key_press_event_t*) event;
+					switch (key_press_event->detail) {
+                        case 25:
+                            camera.move_keys |= 0x1 << UP;
+                            break;
+                        case 38:
+                            camera.move_keys |= 0x1 << LEFT;
+                            break;
+                        case 39:
+                            camera.move_keys |= 0x1 << DOWN;
+                            break;
+                        case 40:
+                            camera.move_keys |= 0x1 << RIGHT;
+                            break;
+                        case 111:
+                            camera.rot_keys  |= 0x1 << UP;
+                            break;
+                        case 113:
+                            camera.rot_keys  |= 0x1 << LEFT;
+                            break;
+                        case 116:
+                            camera.rot_keys  |= 0x1 << DOWN;
+                            break;
+                        case 114:
+                            camera.rot_keys  |= 0x1 << RIGHT;
+                            break;
+					}
+					break;
+                }
+				case XCB_KEY_RELEASE: {
+                    xcb_key_release_event_t *key_release_event;
+                    key_release_event = (xcb_key_release_event_t*) event;
+					switch (key_release_event->detail) {
+                        case 25:
+                            camera.move_keys &= ~(0x1 << UP);
+                            break;
+                        case 38:
+                            camera.move_keys &= ~(0x1 << LEFT);
+                            break;
+                        case 39:
+                            camera.move_keys &= ~(0x1 << DOWN);
+                            break;
+                        case 40:
+                            camera.move_keys &= ~(0x1 << RIGHT);
+                            break;
+                        case 111:
+                            camera.rot_keys  &= ~(0x1 << UP);
+                            break;
+                        case 113:
+                            camera.rot_keys  &= ~(0x1 << LEFT);
+                            break;
+                        case 116:
+                            camera.rot_keys  &= ~(0x1 << DOWN);
+                            break;
+                        case 114:
+                            camera.rot_keys  &= ~(0x1 << RIGHT);
+                            break;
+					}
+                    break;
+                }
 			}
 	}
 }
